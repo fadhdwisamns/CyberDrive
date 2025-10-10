@@ -31,19 +31,33 @@ Route::group(['middleware' => 'auth'], function () {
 	})->name('dashboard');
 
     Route::prefix('drive')->name('drive.')->group(function () {
-        Route::get('/recents', [DriveController::class, 'recents'])->name('recents');
-        Route::get('/{folder?}', [DriveController::class, 'index'])->where('folder', '.*')->name('index');
-        Route::post('/upload', [DriveController::class, 'upload'])->name('upload');
-        Route::get('/download/{filePath}', [DriveController::class, 'download'])->where('filePath', '.*')->name('download');
-        Route::post('/folder/create', [DriveController::class, 'createFolder'])->name('folder.create');
-        Route::delete('/delete/{filePath}', [DriveController::class, 'destroy'])->where('filePath', '.*')->name('destroy');
-        Route::get('/trash', [DriveController::class, 'trash'])->name('trash'); 
-        Route::post('/trash/{fileId}/restore', [DriveController::class, 'restore'])->name('trash.restore'); 
-        Route::delete('/trash/{fileId}/force-delete', [DriveController::class, 'forceDelete'])->name('trash.force-delete');
-    
         
-    });
+        // Rute GET yang spesifik (tidak ada parameter di URL)
+        Route::get('/recents', [DriveController::class, 'recents'])->name('recents');
+        Route::get('/trash', [DriveController::class, 'trash'])->name('trash');
+        Route::get('/starred', [DriveController::class, 'starred'])->name('starred'); // Rute yang hilang, sudah ditambahkan
 
+        // Rute Aksi (POST, DELETE, PUT)
+        Route::post('/upload', [DriveController::class, 'upload'])->name('upload');
+        Route::post('/folder/create', [DriveController::class, 'createFolder'])->name('folder.create');
+        Route::delete('/folder/{folder}', [DriveController::class, 'destroyFolder'])->name('folder.destroy');
+        Route::post('/trash/{file}/restore', [DriveController::class, 'restore'])->name('trash.restore');
+        Route::delete('/trash/{file}/force-delete', [DriveController::class, 'forceDelete'])->name('trash.force-delete');
+        Route::post('/files/{file}/move', [DriveController::class, 'moveFile'])->name('files.move');
+        Route::post('/files/{file}/toggle-star', [DriveController::class, 'toggleStar'])->name('files.toggle-star');
+        
+        // Rute GET dengan parameter
+        Route::get('/download/{file}', [DriveController::class, 'download'])->name('download');
+        
+        // Rute DELETE dengan parameter
+        Route::delete('/delete/{file}', [DriveController::class, 'destroy'])->name('destroy');
+
+
+        // =================================================================
+        // ATURAN PENTING: Rute yang UMUM (catch-all) harus di paling BAWAH
+        // =================================================================
+        Route::get('/{folder?}', [DriveController::class, 'index'])->where('folder', '.*')->name('index');
+    });
     Route::get('/logout', [SessionsController::class, 'destroy'])->name('logout');
 });
 

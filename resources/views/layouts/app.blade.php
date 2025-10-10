@@ -42,5 +42,6 @@
   </script>
   <script async defer src="https://buttons.github.io/buttons.js"></script>
   <script src="{{ asset('assets/js/soft-ui-dashboard.min.js?v=1.0.3') }}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 </body>
 </html>

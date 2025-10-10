@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use App\Models\File;
+use App\Models\Folder; 
 use App\Models\Setting;
 
 class DriveController extends Controller
@@ -30,16 +31,23 @@ class DriveController extends Controller
     /**
      * Menampilkan file dan folder.
      */
-    public function index($folder = null) // Untuk saat ini, parameter folder diabaikan
+    public function index($folderId = null)
     {
+        $user = auth()->user();
 
-        $files = File::where('user_id', auth()->id())->latest()->get();
-
-        $breadcrumbs = [
-            ['name' => 'My Drive', 'path' => route('drive.index')]
-        ];
+        $currentFolder = $folderId ? Folder::where('user_id', $user->id)->findOrFail($folderId) : null;
         
-        return view('drive.index', compact('files', 'breadcrumbs'));
+        $folders = Folder::where('user_id', $user->id)
+                         ->where('parent_id', $currentFolder ? $currentFolder->id : null)
+                         ->latest()->get();
+
+        $files = File::where('user_id', $user->id)
+                     ->where('folder_id', $currentFolder ? $currentFolder->id : null)
+                     ->latest()->get();
+
+        $breadcrumbs = $this->generateBreadcrumbs($currentFolder);
+        
+        return view('drive.index', compact('files', 'folders', 'currentFolder', 'breadcrumbs'));
     }
 
     /**
@@ -50,10 +58,10 @@ class DriveController extends Controller
         $settings = Setting::all()->keyBy('key');
         $maxSizeMB = $settings['max_upload_size_mb']->value ?? 100;
         $allowedTypes = $settings['allowed_file_types']->value ?? 'jpg,jpeg,png,pdf,docx,xlsx,zip';
-
+        
         $request->validate([
             'file' => ['required', 'file', 'max:' . ($maxSizeMB * 1024), 'mimes:' . $allowedTypes],
-            'current_path' => 'required|string' 
+            'folder_id' => 'nullable|exists:folders,id' // Diubah dari parent_id
         ]);
 
         $uploadedFile = $request->file('file');
@@ -68,6 +76,7 @@ class DriveController extends Controller
 
         File::create([
             'user_id' => $user->id,
+            'folder_id' => $request->folder_id,
             'name' => $uploadedFile->getClientOriginalName(),
             'path' => $path,
             'size' => $fileSize,
@@ -78,13 +87,25 @@ class DriveController extends Controller
 
         return back()->with('success', 'File berhasil diupload.');
     }
+    
 
     /**
      * Membuat folder baru.
      */
-     public function createFolder(Request $request)
+    public function createFolder(Request $request)
     {
-        return back()->with('error', 'Fitur folder sedang dalam pengembangan.');
+        $request->validate([
+            'folder_name' => 'required|string|max:255',
+            'parent_id' => 'nullable|exists:folders,id'
+        ]);
+
+        Folder::create([
+            'user_id' => auth()->id(),
+            'parent_id' => $request->parent_id,
+            'name' => $request->folder_name,
+        ]);
+
+        return redirect()->back()->with('success', 'Folder berhasil dibuat.');
     }
     
     /**
@@ -118,22 +139,21 @@ class DriveController extends Controller
     }
     
 
-    private function generateBreadcrumbs($folder)
+    private function generateBreadcrumbs($currentFolder)
     {
         $breadcrumbs = [];
-        $breadcrumbs[] = ['name' => 'My Drive', 'path' => route('drive.index')];
-        
-        if ($folder) {
-            $pathSegments = explode('/', $folder);
-            $currentPath = '';
-            foreach ($pathSegments as $segment) {
-                $currentPath .= $segment;
-                $breadcrumbs[] = ['name' => $segment, 'path' => route('drive.index', ['folder' => $currentPath])];
-                $currentPath .= '/';
-            }
+        $folder = $currentFolder;
+
+        while ($folder) {
+            array_unshift($breadcrumbs, ['name' => $folder->name, 'path' => route('drive.index', $folder->id)]);
+            $folder = $folder->parent;
         }
+
+        array_unshift($breadcrumbs, ['name' => 'My Drive', 'path' => route('drive.index')]);
+
         return $breadcrumbs;
     }
+
 
     private function getDirectorySize($path)
     {
@@ -200,5 +220,42 @@ class DriveController extends Controller
         $file->forceDelete();
 
         return redirect()->route('drive.trash')->with('success', "'{$file->name}' telah dihapus secara permanen.");
+    }
+
+    public function moveFile(Request $request, File $file)
+    {
+        $request->validate([
+            'target_folder_id' => 'nullable|exists:folders,id',
+        ]);
+
+        $targetFolderId = $request->input('target_folder_id');
+
+        if ($file->user_id !== auth()->id()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+        }
+
+        if ($targetFolderId) {
+            $targetFolder = Folder::where('user_id', auth()->id())->find($targetFolderId);
+            if (!$targetFolder) {
+                return response()->json(['success' => false, 'message' => 'Target folder not found.'], 404);
+            }
+        }
+
+        $file->folder_id = $targetFolderId;
+        $file->save();
+
+        return response()->json(['success' => true, 'message' => 'File moved successfully.']);
+    }
+    public function destroyFolder($id)
+    {
+        $folder = Folder::findOrFail($id);
+
+        if (\Storage::exists($folder->path)) {
+            \Storage::deleteDirectory($folder->path);
+        }
+
+        $folder->delete();
+
+        return redirect()->route('drive.index')->with('success', 'Folder berhasil dihapus.');
     }
 }
