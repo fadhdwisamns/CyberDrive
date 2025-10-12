@@ -42,7 +42,7 @@
                     <div class="card">
                         <div class="card-header pb-0 d-flex justify-content-between align-items-center">
                             <div class="d-flex align-items-center">
-                                 <nav aria-label="breadcrumb">
+                                <nav aria-label="breadcrumb">
                                     <ol class="breadcrumb bg-transparent mb-0 pb-0 pt-1 px-0 me-sm-6 me-5">
                                         @foreach ($breadcrumbs as $breadcrumb)
                                             @if ($loop->last)
@@ -62,7 +62,7 @@
                                 <button type="button" class="btn btn-primary btn-sm mb-0" data-bs-toggle="modal" data-bs-target="#newFolderModal">
                                     <i class="fas fa-folder-plus me-1"></i> New Folder
                                 </button>
-                                <button type="button" class="btn btn-success btn-sm mb-0" data-bs-toggle="modal" data-bs-target="#uploadFileModal">
+                                <button type="button" class="btn btn-success btn-sm mb-0 ms-2" data-bs-toggle="modal" data-bs-target="#uploadFileModal">
                                     <i class="fas fa-upload me-1"></i> Upload File
                                 </button>
                             </div>
@@ -128,18 +128,22 @@
                                                     <td><p class="text-xs font-weight-bold mb-0">{{ \App\Http\Controllers\Driver\DriveController::formatBytes($file->size) }}</p></td>
                                                     <td><p class="text-xs text-secondary mb-0">{{ $file->updated_at->format('d M Y, H:i') }}</p></td>
                                                     <td class="align-middle text-center text-sm">
-                                                        <form action="{{ route('drive.files.toggle-star', $file->id) }}" method="POST" class="d-inline">
-                                                            @csrf
-                                                            <button type="submit" class="btn btn-link text-warning p-0 m-0 me-3" title="Toggle Star">
-                                                                @if($file->is_starred)<i class="fas fa-star"></i>@else<i class="far fa-star"></i>@endif
-                                                            </button>
-                                                        </form>
-                                                        <a href="{{ route('drive.download', $file->id) }}" class="btn btn-link text-dark p-0 m-0 me-3" title="Download"><i class="fas fa-download"></i></a>
-                                                        <form action="{{ route('drive.destroy', $file->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Pindahkan file ini ke tong sampah?');">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="btn btn-link text-danger p-0 m-0" title="Trash"><i class="fas fa-trash"></i></button>
-                                                        </form>
+                                                        {{-- [FIXED] Ikon diubah menjadi teks --}}
+                                                        <div class="d-flex justify-content-center">
+                                                            <form action="{{ route('drive.files.toggle-star', $file->id) }}" method="POST" class="d-inline">
+                                                                @csrf
+                                                                <button type="submit" class="btn btn-link text-secondary px-2 mb-0" title="Toggle Star">
+                                                                    @if($file->is_starred)Unstar @else Star @endif
+                                                                </button>
+                                                            </form>
+                                                            <a href="{{ route('drive.preview', $file->id) }}" target="_blank" class="btn btn-link text-secondary px-2 mb-0" title="Preview">Preview</a>
+                                                            <a href="{{ route('drive.download', $file->id) }}" class="btn btn-link text-secondary px-2 mb-0" title="Download">Download</a>
+                                                            <form action="{{ route('drive.destroy', $file->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Pindahkan file ini ke tong sampah?');">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-link text-danger px-2 mb-0" title="Trash">Trash</button>
+                                                            </form>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             @endforeach
@@ -166,34 +170,45 @@
 
                                     @foreach ($files as $file)
                                         <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-4" data-id="{{ $file->id }}" data-type="file">
-                                            <div class="card h-100">
-                                                <div class="card-body text-center d-flex flex-column justify-content-center">
+                                            {{-- [FIXED] Seluruh kartu sekarang menjadi link ke halaman preview/download --}}
+                                            <a href="{{ route('drive.preview', $file->id) }}" target="_blank" class="text-decoration-none">
+                                                <div class="card h-100">
                                                     @php
-                                                        $extension = pathinfo($file->name, PATHINFO_EXTENSION);
-                                                        $icon = 'fa-file';
-                                                        if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif'])) $icon = 'fa-file-image';
-                                                        else if ($extension == 'pdf') $icon = 'fa-file-pdf';
-                                                        else if (in_array($extension, ['doc', 'docx'])) $icon = 'fa-file-word';
+                                                        // Mengambil ekstensi file dan mengubahnya ke huruf kecil
+                                                        $extension = strtolower(pathinfo($file->name, PATHINFO_EXTENSION));
+                                                        $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'];
                                                     @endphp
-                                                    <i class="fas {{ $icon }} fa-3x mb-3"></i>
-                                                    <p class="text-sm font-weight-bold mb-0 text-truncate" title="{{ $file->name }}">{{ $file->name }}</p>
-                                                    <p class="text-xs text-secondary mt-1 mb-0">{{ \App\Http\Controllers\Driver\DriveController::formatBytes($file->size) }}</p>
+
+                                                    {{-- [FIXED] Cek apakah file adalah gambar dan benar-benar ada di storage --}}
+                                                    @if (in_array($extension, $imageExtensions) && Storage::disk('public')->exists($file->path))
+                                                        {{-- JIKA GAMBAR: Tampilkan preview gambar --}}
+                                                        <div class="card-header p-0 mx-3 mt-3 position-relative z-index-1">
+                                                            <div class="d-block">
+                                                                {{-- Gunakan Storage::url() untuk mendapatkan link publik ke file --}}
+                                                                <img src="{{ Storage::url($file->path) }}" class="img-fluid border-radius-lg" style="width: 100%; height: 120px; object-fit: cover;" alt="{{ $file->name }}">
+                                                            </div>
+                                                        </div>
+                                                        <div class="card-body pt-2 text-center">
+                                                            <h6 class="text-sm font-weight-bold mb-0 text-truncate" title="{{ $file->name }}">{{ $file->name }}</h6>
+                                                            <p class="text-xs text-secondary mt-1 mb-0">{{ \App\Http\Controllers\Driver\DriveController::formatBytes($file->size) }}</p>
+                                                        </div>
+                                                    @else
+                                                        {{-- JIKA BUKAN GAMBAR: Tampilkan ikon seperti biasa --}}
+                                                        <div class="card-body text-center d-flex flex-column justify-content-center">
+                                                            @php
+                                                                $icon = 'fa-file'; // Ikon default
+                                                                if ($extension == 'pdf') $icon = 'fa-file-pdf text-danger';
+                                                                else if (in_array($extension, ['doc', 'docx'])) $icon = 'fa-file-word text-primary';
+                                                                else if (in_array($extension, ['xls', 'xlsx'])) $icon = 'fa-file-excel text-success';
+                                                                else if (in_array($extension, ['zip', 'rar', '7z'])) $icon = 'fa-file-archive text-warning';
+                                                            @endphp
+                                                            <i class="fas {{ $icon }} fa-3x mb-3"></i>
+                                                            <p class="text-sm font-weight-bold mb-0 text-truncate" title="{{ $file->name }}">{{ $file->name }}</p>
+                                                            <p class="text-xs text-secondary mt-1 mb-0">{{ \App\Http\Controllers\Driver\DriveController::formatBytes($file->size) }}</p>
+                                                        </div>
+                                                    @endif
                                                 </div>
-                                                <div class="card-footer text-center pt-0">
-                                                    <form action="{{ route('drive.files.toggle-star', $file->id) }}" method="POST" class="d-inline">
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-link text-warning px-2" title="Toggle Star">
-                                                            @if($file->is_starred)<i class="fas fa-star"></i>@else<i class="far fa-star"></i>@endif
-                                                        </button>
-                                                    </form>
-                                                    <a href="{{ route('drive.download', $file->id) }}" class="btn btn-link text-dark px-2" title="Download"><i class="fas fa-download"></i></a>
-                                                    <form action="{{ route('drive.destroy', $file->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Pindahkan file ini ke tong sampah?');">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-link text-danger px-2" title="Trash"><i class="fas fa-trash"></i></button>
-                                                    </form>
-                                                </div>
-                                            </div>
+                                            </a>
                                         </div>
                                     @endforeach
                                 </div>
@@ -211,6 +226,7 @@
             @include('layouts.footers.auth.footer')
         </div>
         
+        {{-- MODALS --}}
         <div class="modal fade" id="newFolderModal" tabindex="-1" aria-labelledby="newFolderModalLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -265,120 +281,35 @@
 
 @push('dashboard')
 <style>
-    /* 🌈 GOOGLE DRIVE THEME STYLE */
-
-    /* --- GRID VIEW --- */
-    #grid-view {
-        display: none;
+    /* Wrapper untuk kartu di grid view */
+    .drive-item-wrapper {
+        position: relative; /* Wajib ada agar 'position: absolute' di bawahnya berfungsi */
+        border: 1px solid transparent;
+        transition: border .2s ease-in-out, box-shadow .2s ease-in-out;
+    }
+    
+    .drive-item-wrapper:hover {
+        border-color: #dee2e6;
+        box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
     }
 
-    #grid-view .drive-item {
-        position: relative;
-        border-radius: 10px;
-        background-color: #fff;
-        transition: all 0.2s ease-in-out;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-        overflow: hidden;
-    }
-
-    #grid-view .drive-item:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.12);
-    }
-
-    /* Icon besar di tengah */
-    #grid-view .drive-item .icon-wrapper {
-        text-align: center;
-        padding: 25px 0 10px;
-        color: #5f6368;
-    }
-
-    #grid-view .drive-item .icon-wrapper i {
-        font-size: 48px;
-    }
-
-    #grid-view .drive-item .item-name {
-        font-size: 14px;
-        font-weight: 500;
-        text-align: center;
-        margin: 0 10px 5px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    /* Info size dan date kecil */
-    #grid-view .drive-item .item-meta {
-        font-size: 12px;
-        color: #80868b;
-        text-align: center;
-        margin-bottom: 8px;
-    }
-
-    /* Tombol aksi muncul saat hover */
-    #grid-view .drive-item .action-bar {
+    /* Bar untuk tombol aksi (download, delete, etc) */
+    .action-bar {
         position: absolute;
-        top: 6px;
-        right: 6px;
+        top: 8px; /* Jarak dari atas */
+        right: 8px; /* Jarak dari kanan */
+        z-index: 10;
         display: flex;
-        gap: 4px;
-        opacity: 0;
-        transition: opacity 0.2s ease;
+        flex-wrap: wrap; /* Menambahkan wrap agar tombol tidak keluar jika layar kecil */
+        justify-content: flex-end; /* Ratakan ke kanan */
+        gap: 5px; /* Jarak antar tombol */
+        opacity: 0; /* Sembunyikan secara default */
+        transition: opacity 0.2s ease-in-out;
     }
 
-    #grid-view .drive-item:hover .action-bar {
-        opacity: 1;
-    }
-
-    #grid-view .action-bar button {
-        background: rgba(255,255,255,0.8);
-        border: none;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        color: #5f6368;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: background 0.2s ease;
-    }
-
-    #grid-view .action-bar button:hover {
-        background: #e8f0fe;
-        color: #1a73e8;
-    }
-
-    /* --- LIST VIEW --- */
-    .table thead th {
-        background-color: #f8f9fa;
-        font-weight: 600;
-        color: #5f6368;
-        border-bottom: 1px solid #e0e0e0;
-    }
-
-    .table tbody tr:hover {
-        background-color: #f1f3f4;
-        transition: background-color 0.2s;
-    }
-
-    /* Star warna gold */
-    .text-warning i {
-        color: #f4b400 !important;
-    }
-
-    /* --- Tombol toggle view --- */
-    #btn-list-view.active,
-    #btn-grid-view.active {
-        background-color: #1a73e8 !important;
-        color: white !important;
-    }
-
-    /* --- Empty Folder State --- */
-    .empty-drive {
-        padding: 60px 0;
-        color: #9aa0a6;
-        font-size: 15px;
-        text-align: center;
+    /* Munculkan action-bar saat wrapper di-hover */
+    .drive-item-wrapper:hover .action-bar {
+        opacity: 1; /* Tampilkan saat di-hover */
     }
 </style>
 <script>
@@ -444,7 +375,6 @@
             .then(data => {
                 if (data.success) {
                     element.remove();
-                    // Anda bisa mengganti alert ini dengan notifikasi yang lebih bagus
                     alert('File berhasil dipindahkan!'); 
                 } else {
                     alert('Gagal memindahkan file: ' + data.message);

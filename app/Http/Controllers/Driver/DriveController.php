@@ -258,4 +258,34 @@ class DriveController extends Controller
 
         return redirect()->route('drive.index')->with('success', 'Folder berhasil dihapus.');
     }
+    public function preview($fileId)
+    {
+        $file = File::where('user_id', auth()->id())->findOrFail($fileId);
+
+        // Pastikan file ada di storage
+        if (!Storage::disk('public')->exists($file->path)) {
+            abort(404, 'File not found on disk.');
+        }
+
+        return Storage::disk('public')->response($file->path, $file->name, [
+            'Content-Type' => $file->mime_type,
+            'Content-Disposition' => 'inline; filename="' . $file->name . '"'
+        ]);
+    }
+    public function toggleStar(File $file)
+    {
+        if ($file->user_id !== auth()->id()) {
+
+            return back()->with('error', 'Aksi tidak diizinkan.');
+        }
+
+        $file->is_starred = !$file->is_starred;
+        $file->save();
+
+        $message = $file->is_starred ? 
+                   "'{$file->name}' berhasil ditambahkan ke Berbintang." : 
+                   "'{$file->name}' berhasil dihapus dari Berbintang.";
+
+        return back()->with('success', $message);
+    }
 }

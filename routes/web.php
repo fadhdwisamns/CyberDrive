@@ -47,6 +47,7 @@ Route::group(['middleware' => 'auth'], function () {
         Route::post('/files/{file}/toggle-star', [DriveController::class, 'toggleStar'])->name('files.toggle-star');
         
         // Rute GET dengan parameter
+        Route::get('/preview/{file}', [DriveController::class, 'preview'])->name('preview');
         Route::get('/download/{file}', [DriveController::class, 'download'])->name('download');
         
         // Rute DELETE dengan parameter
