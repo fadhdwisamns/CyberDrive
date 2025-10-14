@@ -258,6 +258,31 @@ class DriveController extends Controller
 
         return redirect()->route('drive.index')->with('success', 'Folder berhasil dihapus.');
     }
+    // file: app/Http/Controllers/Driver/DriveController.php
+
+//    public function preview($fileId)
+//     {
+//         $file = File::where('user_id', auth()->id())->findOrFail($fileId);
+
+//         $extension = strtolower(pathinfo($file->name, PATHINFO_EXTENSION));
+
+//         // Hanya izinkan pratinjau untuk docx dan xlsx dengan metode baru ini
+//         if (in_array($extension, ['docx', 'xlsx'])) {
+//             return view('drive.preview', compact('file'));
+//         }
+
+//         // Untuk file lain (gambar, pdf, dll), gunakan metode lama
+//         // yang akan ditampilkan langsung oleh browser.
+//         if (!Storage::disk('public')->exists($file->path)) {
+//             abort(404, 'File not found on disk.');
+//         }
+
+//         return Storage::disk('public')->response($file->path, $file->name, [
+//             'Content-Type' => $file->mime_type,
+//             'Content-Disposition' => 'inline; filename="' . $file->name . '"'
+//         ]);
+//     }
+
     public function preview($fileId)
     {
         $file = File::where('user_id', auth()->id())->findOrFail($fileId);

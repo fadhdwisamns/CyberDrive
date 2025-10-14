@@ -4,7 +4,7 @@
         <a class="align-items-center d-flex m-0 navbar-brand text-wrap" href="{{ route('dashboard') }}">
             {{-- Path gambar diperbaiki dengan asset() --}}
             <img src="{{ asset('assets/img/CT.png') }}" class="navbar-brand-img h-100" alt="main_logo">
-            <span class="ms-3 font-weight-bold">Cyber Drive</span>
+            <span class="ms-3 font-weight-bold">CLUB HOUSE</span>
         </a>
     </div>
     <hr class="horizontal dark mt-0">

@@ -20,7 +20,7 @@
               </script> Soft by 
               <a style="color: #252f40;" href="https://www.creative-tim.com" class="font-weight-bold ml-1" target="_blank">Cyber Drive </a>
               &
-              <a style="color: #252f40;" href="https://www.updivision.com" class="font-weight-bold ml-1" target="_blank">Dwi</a>.
+              <a style="color: #252f40;" href="https://www.updivision.com" class="font-weight-bold ml-1" target="_blank">CLUB HOUSE</a>.
             </p>
           </div>
         </div>
